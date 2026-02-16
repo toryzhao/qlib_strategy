@@ -1,0 +1,35 @@
+# trading/config/config.yaml
+data:
+  raw_path: "data/raw"
+  processed_path: "data/processed"
+  freq: "1min"
+  adjust_price: true
+
+instruments:
+  TA:
+    name: "PTA"
+    csv_file: "TA.csv"
+    contract_size: 5
+    commission_rate: 0.0001
+    margin_rate: 0.08
+  rb:
+    name: "螺纹钢"
+    csv_file: "rb.csv"
+    contract_size: 10
+    commission_rate: 0.0001
+    margin_rate: 0.10
+  m:
+    name: "豆粕"
+    csv_file: "m.csv"
+    contract_size: 10
+    commission_rate: 0.0001
+    margin_rate: 0.07
+
+qlib:
+  provider_uri: "data/processed/qlib_data"
+  region: "cn"
+
+backtest:
+  initial_cash: 1000000
+  position_ratio: 0.3
+  max_position_ratio: 0.8
