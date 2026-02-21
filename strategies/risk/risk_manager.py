@@ -69,3 +69,82 @@ class RiskManager:
         trend[data['close'] < trend_ma] = -1
 
         return trend
+
+    def calculate_volatility_adjustment(self, data, base_position_ratio):
+        """
+        Calculate volatility-adjusted position size
+
+        Reduces position size by 50% when ATR is in top 20% of historical range
+
+        Parameters:
+            data: DataFrame with price data (must have 'high', 'low', 'close')
+            base_position_ratio: Base position ratio (e.g., 0.3 for 30%)
+
+        Returns:
+            float: Adjusted position ratio
+        """
+        if len(data) < self.atr_lookback:
+            # Not enough data, use base ratio
+            return base_position_ratio
+
+        # Calculate ATR
+        atr = self._calculate_atr(data)
+
+        # Calculate ATR percentile over lookback period
+        current_atr = atr.iloc[-1]
+        atr_lookback_values = atr.iloc[-self.atr_lookback:]
+
+        # Calculate percentile rank
+        percentile = (atr_lookback_values < current_atr).sum() / len(atr_lookback_values) * 100
+
+        # Reduce position size if volatility is high
+        if percentile >= self.volatility_threshold:
+            return base_position_ratio * 0.5
+        else:
+            return base_position_ratio
+
+    def should_exit_trailing_stop(self, data, entry_bar, current_bar, position_type):
+        """
+        Check if position should be closed based on trailing stop
+
+        Uses swing high/low method: exit when price penetrates
+        the highest high (short) or lowest low (long) since entry
+
+        Parameters:
+            data: DataFrame with 'close', 'high', 'low' columns
+            entry_bar: Index of bar when position was entered
+            current_bar: Index of current bar
+            position_type: 1 for long, -1 for short
+
+        Returns:
+            bool: True if should exit, False otherwise
+        """
+        # Determine lookback period (bars since entry)
+        bars_since_entry = current_bar - entry_bar
+        lookback = min(bars_since_entry, self.swing_period)
+
+        # Minimum 5 bars required
+        if lookback < 5:
+            # Use entry price as stop
+            entry_price = data['close'].iloc[entry_bar]
+            current_price = data['close'].iloc[current_bar]
+
+            if position_type == 1:  # Long
+                return current_price < entry_price
+            else:  # Short
+                return current_price > entry_price
+
+        # Get data since entry
+        data_since_entry = data.iloc[entry_bar:current_bar + 1]
+
+        if position_type == 1:  # Long position
+            # Exit if close falls below lowest low
+            lowest_low = data_since_entry['low'].min()
+            current_price = data['close'].iloc[current_bar]
+            return current_price < lowest_low
+
+        else:  # Short position
+            # Exit if close rises above highest high
+            highest_high = data_since_entry['high'].max()
+            current_price = data['close'].iloc[current_bar]
+            return current_price > highest_high
