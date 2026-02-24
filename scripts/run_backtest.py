@@ -28,6 +28,12 @@ def main():
     parser.add_argument('--end', type=str, required=True, help='结束日期 (YYYY-MM-DD)')
     parser.add_argument('--fast', type=int, help='快速周期')
     parser.add_argument('--slow', type=int, help='慢速周期')
+    # Risk management parameters
+    parser.add_argument('--trend-ma-period', type=int, default=200, help='趋势过滤MA周期 (默认200)')
+    parser.add_argument('--atr-period', type=int, default=14, help='ATR计算周期 (默认14)')
+    parser.add_argument('--atr-lookback', type=int, default=100, help='ATR回看期 (默认100)')
+    parser.add_argument('--volatility-threshold', type=int, default=80, help='波动率阈值百分位 (默认80)')
+    parser.add_argument('--swing-period', type=int, default=20, help='摆荡周期 (默认20)')
     parser.add_argument('--output', type=str, default='reports', help='报告输出目录')
 
     args = parser.parse_args()
@@ -46,6 +52,13 @@ def main():
         config['fast_period'] = args.fast
     if args.slow:
         config['slow_period'] = args.slow
+
+    # 添加风险管理参数
+    config['trend_ma_period'] = args.trend_ma_period
+    config['atr_period'] = args.atr_period
+    config['atr_lookback'] = args.atr_lookback
+    config['volatility_threshold'] = args.volatility_threshold
+    config['swing_period'] = args.swing_period
 
     try:
         # 加载数据

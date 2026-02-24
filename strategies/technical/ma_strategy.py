@@ -1,9 +1,10 @@
 # trading/strategies/technical/ma_strategy.py
 from strategies.base.base_strategy import FuturesStrategy
+from strategies.risk.risk_manager import RiskManager
 import pandas as pd
 
 class MAStrategy(FuturesStrategy):
-    """双均线策略"""
+    """双均线策略with risk management"""
 
     def __init__(self, instrument, start_date, end_date, config):
         """
@@ -16,39 +17,56 @@ class MAStrategy(FuturesStrategy):
             config: 配置字典，包含:
                 - fast_period: 快速均线周期 (默认5)
                 - slow_period: 慢速均线周期 (默认20)
+                - trend_ma_period: 趋势过滤MA周期 (默认200)
+                - atr_period: ATR周期 (默认14)
+                - atr_lookback: ATR回看期 (默认100)
+                - volatility_threshold: 波动率阈值 (默认80)
+                - swing_period: 摆荡周期 (默认20)
         """
         super().__init__(instrument, start_date, end_date, config)
-        self.fast_period = config.get('fast_period', 5)
-        self.slow_period = config.get('slow_period', 20)
+        self.fast_period = config.get("fast_period", 5)
+        self.slow_period = config.get("slow_period", 20)
+
+        # Initialize RiskManager
+        self.risk_manager = RiskManager(config)
 
     def generate_signals(self, data):
         """
-        生成交易信号
+        生成交易信号 (with trend filter)
 
         策略逻辑:
-        - 快速均线上穿慢速均线 → 金叉做多 (signal=1)
-        - 快速均线下穿慢速均线 → 死叉做空 (signal=-1)
+        - 计算快速MA和慢速MA
+        - 应用趋势过滤器 (200-MA)
+        - 只在趋势方向上交易
 
         参数:
-            data: 市场数据DataFrame，必须包含'close'列
+            data: 市场数据DataFrame，必须包含"close"列
 
         返回:
-            pd.Series: 信号序列
+            pd.Series: 信号序列 (1=做多, -1=做空, 0=无信号)
         """
         # 计算均线
-        fast_ma = data['close'].rolling(self.fast_period).mean()
-        slow_ma = data['close'].rolling(self.slow_period).mean()
+        fast_ma = data["close"].rolling(self.fast_period).mean()
+        slow_ma = data["close"].rolling(self.slow_period).mean()
 
-        # 金叉死叉信号
+        # 计算趋势
+        trend = self.risk_manager.calculate_trend_filter(data)
+
+        # 生成原始信号
+        raw_signals = pd.Series(0, index=data.index)
+        raw_signals[fast_ma > slow_ma] = 1   # 金叉做多
+        raw_signals[fast_ma < slow_ma] = -1  # 死叉做空
+
+        # 应用趋势过滤器: 只在趋势方向上交易
         signals = pd.Series(0, index=data.index)
-        signals[fast_ma > slow_ma] = 1   # 金叉做多
-        signals[fast_ma < slow_ma] = -1  # 死叉做空
+        signals[(raw_signals == 1) & (trend == 1)] = 1   # 做多且上升趋势
+        signals[(raw_signals == -1) & (trend == -1)] = -1  # 做空且下降趋势
 
         return signals
 
     def get_features(self):
         """获取策略所需特征"""
         return {
-            f'MA{self.fast_period}': 'close',
-            f'MA{self.slow_period}': 'close'
+            f"MA{self.fast_period}": "close",
+            f"MA{self.slow_period}": "close"
         }
