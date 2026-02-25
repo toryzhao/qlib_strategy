@@ -225,7 +225,7 @@ class BacktestExecutor:
             float: 调整后的仓位比例
         """
         # 使用策略的RiskManager进行波动率调整
-        if hasattr(self.strategy, 'risk_manager'):
+        if hasattr(self.strategy, 'risk_manager') and self.strategy.risk_manager is not None:
             # 获取从开始到当前bar的数据
             data_slice = data.iloc[:current_bar + 1]
             adjusted_ratio = self.strategy.risk_manager.calculate_volatility_adjustment(
