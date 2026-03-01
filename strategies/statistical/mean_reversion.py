@@ -138,8 +138,36 @@ class MeanReversionStrategy(FuturesStrategy):
         Returns:
             DataFrame: Signals and target positions
         """
-        # Placeholder implementation - will be fully implemented later
+        # Calculate Z-Score
+        zscore = self.calculate_zscore(data)
+
+        # Initialize output DataFrame
         signals = pd.DataFrame(index=data.index)
+        signals['zscore'] = zscore
         signals['signal'] = 0
         signals['target_position'] = 0.0
+
+        # Generate signals for valid Z-Scores
+        valid_mask = ~pd.isna(zscore)
+
+        for i in range(len(data)):
+            if not valid_mask.iloc[i]:
+                continue
+
+            current_z = zscore.iloc[i]
+
+            # Determine signal direction and position size
+            if current_z > 0:
+                # Price above mean → potential short
+                position_size = self.get_position_size(current_z)
+                if position_size > 0:
+                    signals.loc[signals.index[i], 'signal'] = -1
+                    signals.loc[signals.index[i], 'target_position'] = position_size
+            else:
+                # Price below mean → potential long
+                position_size = self.get_position_size(current_z)
+                if position_size > 0:
+                    signals.loc[signals.index[i], 'signal'] = 1
+                    signals.loc[signals.index[i], 'target_position'] = position_size
+
         return signals

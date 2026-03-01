@@ -90,3 +90,51 @@ def test_should_exit_max_holding_period():
     # Should exit after 50 bars regardless of Z-Score
     assert strategy.should_exit(current_zscore=1.0, entry_zscore=2.0, bars_held=51) == True
     assert strategy.should_exit(current_zscore=1.0, entry_zscore=2.0, bars_held=50) == False
+
+
+def test_generate_signals_basic():
+    """Test signal generation with oscillating price"""
+    # Create price data that oscillates
+    data = pd.DataFrame({
+        'close': [100, 102, 104, 106, 108, 110, 108, 106, 104, 102, 100]
+    })
+
+    config = {
+        'lookback_period': 5,
+        'entry_threshold': 1.0  # Lower threshold for test data
+    }
+    strategy = MeanReversionStrategy('TEST', '2020-01-01', '2020-12-31', config)
+
+    signals = strategy.generate_signals(data)
+
+    # Verify output format
+    assert isinstance(signals, pd.DataFrame)
+    assert 'signal' in signals.columns
+    assert 'target_position' in signals.columns
+    assert len(signals) == len(data)
+
+    # Verify signal values are -1, 0, or 1
+    assert signals['signal'].isin([-1, 0, 1]).all()
+
+    # Verify position sizes are 0.0, 0.5, 0.75, or 1.0
+    assert signals['target_position'].isin([0.0, 0.5, 0.75, 1.0]).all()
+
+
+def test_generate_signals_with_extreme_zscore():
+    """Test signal generation generates signals with extreme Z-Score"""
+    # Create data with extreme deviation
+    data = pd.DataFrame({
+        'close': [100, 100, 100, 100, 100, 100, 100, 110]  # Last bar is extreme
+    })
+
+    config = {
+        'lookback_period': 5,
+        'level1_threshold': 1.0  # Low threshold to trigger signal
+    }
+    strategy = MeanReversionStrategy('TEST', '2020-01-01', '2020-12-31', config)
+
+    signals = strategy.generate_signals(data)
+
+    # The last bar should have a signal (extreme price deviation)
+    # Z-Score will be high since 110 is far from mean of 100
+    assert signals['signal'].iloc[-1] != 0 or signals['target_position'].iloc[-1] > 0
