@@ -64,8 +64,8 @@ class ParameterOptimizer:
 
                 if verbose:
                     # 显示当前结果
-                    print(f"  MA({params['fast_period']}/{params['slow_period']}): "
-                          f"{metric}={metrics[metric]:.4f}")
+                    params_str = ", ".join(f"{k}={v}" for k, v in params.items())
+                    print(f"  [{params_str}]: {metric}={metrics[metric]:.4f}")
 
             except Exception as e:
                 if verbose:
