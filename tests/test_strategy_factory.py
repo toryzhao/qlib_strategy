@@ -22,3 +22,21 @@ def test_invalid_strategy_type():
     config = {'instrument': 'TA', 'start_date': '2020-01-01', 'end_date': '2020-12-31'}
     with pytest.raises(ValueError, match="Unknown strategy type"):
         StrategyFactory.create_strategy('invalid_strategy', config)
+
+def test_create_mean_reversion_strategy():
+    """Test creating mean reversion strategy via factory"""
+    config = {
+        'instrument': 'TA',
+        'start_date': '2020-01-01',
+        'end_date': '2020-12-31',
+        'lookback_period': 20,
+        'entry_threshold': 1.5
+    }
+
+    strategy = StrategyFactory.create_strategy('mean_reversion', config)
+
+    assert strategy is not None
+    assert hasattr(strategy, 'calculate_zscore')
+    assert hasattr(strategy, 'get_position_size')
+    assert hasattr(strategy, 'should_exit')
+    assert hasattr(strategy, 'generate_signals')

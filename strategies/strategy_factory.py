@@ -1,5 +1,6 @@
 # trading/strategies/strategy_factory.py
 from strategies.technical.ma_strategy import MAStrategy
+from strategies.statistical.mean_reversion import MeanReversionStrategy
 
 class StrategyFactory:
     """策略工厂"""
@@ -24,6 +25,7 @@ class StrategyFactory:
         """
         strategies = {
             'ma_cross': MAStrategy,
+            'mean_reversion': MeanReversionStrategy,
         }
 
         strategy_class = strategies.get(strategy_type)
