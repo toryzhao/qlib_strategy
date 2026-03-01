@@ -161,24 +161,23 @@ class MeanReversionStrategy(FuturesStrategy):
         """
         Generate trading signals based on Z-Score mean reversion
 
-        Returns DataFrame with:
-        - signal: 1 (long), -1 (short), 0 (no position)
-        - target_position: 0.0 to 1.0 (position size ratio)
+        Strategy logic:
+        - Calculate Z-Score for price series
+        - Short when price above mean (positive Z-Score)
+        - Long when price below mean (negative Z-Score)
+        - Position size based on deviation magnitude
 
         Parameters:
             data: DataFrame with 'close' column
 
         Returns:
-            DataFrame: Signals and target positions
+            pd.Series: Signal series (1=long, -1=short, 0=no position)
         """
         # Calculate Z-Score
         zscore = self.calculate_zscore(data)
 
-        # Initialize output DataFrame
-        signals = pd.DataFrame(index=data.index)
-        signals['zscore'] = zscore
-        signals['signal'] = 0
-        signals['target_position'] = 0.0
+        # Initialize signals Series
+        signals = pd.Series(0, index=data.index)
 
         # Generate signals for valid Z-Scores
         valid_mask = ~pd.isna(zscore)
@@ -194,13 +193,11 @@ class MeanReversionStrategy(FuturesStrategy):
                 # Price above mean → potential short
                 position_size = self.get_position_size(current_z)
                 if position_size > 0:
-                    signals.loc[signals.index[i], 'signal'] = -1
-                    signals.loc[signals.index[i], 'target_position'] = position_size
+                    signals.iloc[i] = -1
             else:
                 # Price below mean → potential long
                 position_size = self.get_position_size(current_z)
                 if position_size > 0:
-                    signals.loc[signals.index[i], 'signal'] = 1
-                    signals.loc[signals.index[i], 'target_position'] = position_size
+                    signals.iloc[i] = 1
 
         return signals

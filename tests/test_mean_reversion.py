@@ -107,17 +107,12 @@ def test_generate_signals_basic():
 
     signals = strategy.generate_signals(data)
 
-    # Verify output format
-    assert isinstance(signals, pd.DataFrame)
-    assert 'signal' in signals.columns
-    assert 'target_position' in signals.columns
+    # Verify output format - should be Series
+    assert isinstance(signals, pd.Series)
     assert len(signals) == len(data)
 
     # Verify signal values are -1, 0, or 1
-    assert signals['signal'].isin([-1, 0, 1]).all()
-
-    # Verify position sizes are 0.0, 0.5, 0.75, or 1.0
-    assert signals['target_position'].isin([0.0, 0.5, 0.75, 1.0]).all()
+    assert signals.isin([-1, 0, 1]).all()
 
 
 def test_generate_signals_with_extreme_zscore():
@@ -137,7 +132,7 @@ def test_generate_signals_with_extreme_zscore():
 
     # The last bar should have a signal (extreme price deviation)
     # Z-Score will be high since 110 is far from mean of 100
-    assert signals['signal'].iloc[-1] != 0 or signals['target_position'].iloc[-1] > 0
+    assert signals.iloc[-1] != 0
 
 
 def test_volatility_adjustment():
