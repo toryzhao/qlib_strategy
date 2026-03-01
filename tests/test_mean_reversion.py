@@ -138,3 +138,31 @@ def test_generate_signals_with_extreme_zscore():
     # The last bar should have a signal (extreme price deviation)
     # Z-Score will be high since 110 is far from mean of 100
     assert signals['signal'].iloc[-1] != 0 or signals['target_position'].iloc[-1] > 0
+
+
+def test_volatility_adjustment():
+    """Test position size adjustment for volatility"""
+    config = {
+        'use_volatility_adjustment': True,
+        'atr_period': 14,
+        'atr_lookback': 100,
+        'volatility_threshold': 80
+    }
+    strategy = MeanReversionStrategy('TEST', '2020-01-01', '2020-12-31', config)
+
+    # Create data with high, low, close
+    data = pd.DataFrame({
+        'close': [100] * 150,
+        'high': [101] * 150,
+        'low': [99] * 150
+    })
+
+    # Get position with volatility adjustment
+    base_position = 0.5
+    adjusted_position = strategy.get_position_with_volatility(
+        data, current_bar=149, base_position=base_position
+    )
+
+    # Should return a float between 0 and base_position
+    assert isinstance(adjusted_position, float)
+    assert 0 <= adjusted_position <= base_position

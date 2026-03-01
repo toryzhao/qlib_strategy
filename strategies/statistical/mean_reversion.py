@@ -37,6 +37,16 @@ class MeanReversionStrategy(FuturesStrategy):
         self.max_hold_period = config.get("max_hold_period", 50)
         self.stop_multiplier = config.get("stop_multiplier", 1.5)
 
+        # Check if volatility adjustment should be used
+        self.use_volatility_adjustment = config.get("use_volatility_adjustment", False)
+
+        # Initialize RiskManager if volatility adjustment enabled
+        if self.use_volatility_adjustment:
+            from strategies.risk.risk_manager import RiskManager
+            self.risk_manager = RiskManager(config)
+        else:
+            self.risk_manager = None
+
     def calculate_zscore(self, data):
         """
         Calculate Z-Score for price series
@@ -123,6 +133,29 @@ class MeanReversionStrategy(FuturesStrategy):
             return True
 
         return False
+
+    def get_position_with_volatility(self, data, current_bar, base_position):
+        """
+        Apply volatility adjustment to position size
+
+        Uses RiskManager to reduce position during high volatility periods.
+
+        Parameters:
+            data: DataFrame with OHLC data
+            current_bar: Current bar index
+            base_position: Base position ratio
+
+        Returns:
+            float: Adjusted position ratio
+        """
+        if self.risk_manager is not None:
+            data_slice = data.iloc[:current_bar + 1]
+            adjusted_ratio = self.risk_manager.calculate_volatility_adjustment(
+                data_slice, base_position
+            )
+            return adjusted_ratio
+        else:
+            return base_position
 
     def generate_signals(self, data):
         """
