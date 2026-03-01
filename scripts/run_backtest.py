@@ -28,6 +28,10 @@ def main():
     parser.add_argument('--end', type=str, required=True, help='结束日期 (YYYY-MM-DD)')
     parser.add_argument('--fast', type=int, help='快速周期')
     parser.add_argument('--slow', type=int, help='慢速周期')
+    # Mean reversion parameters
+    parser.add_argument('--lookback-period', type=int, default=20, help='Z-Score回看周期 (默认20)')
+    parser.add_argument('--entry-threshold', type=float, default=1.5, help='Z-Score入场阈值 (默认1.5)')
+    parser.add_argument('--exit-threshold', type=float, default=0.5, help='Z-Score出场阈值 (默认0.5)')
     # Risk management parameters
     parser.add_argument('--trend-ma-period', type=int, default=200, help='趋势过滤MA周期 (默认200)')
     parser.add_argument('--atr-period', type=int, default=14, help='ATR计算周期 (默认14)')
@@ -52,6 +56,11 @@ def main():
         config['fast_period'] = args.fast
     if args.slow:
         config['slow_period'] = args.slow
+
+    # 添加均值回归参数
+    config['lookback_period'] = args.lookback_period
+    config['entry_threshold'] = args.entry_threshold
+    config['exit_threshold'] = args.exit_threshold
 
     # 添加风险管理参数
     config['trend_ma_period'] = args.trend_ma_period
