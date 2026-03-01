@@ -90,6 +90,40 @@ class MeanReversionStrategy(FuturesStrategy):
         else:
             return 1.0
 
+    def should_exit(self, current_zscore, entry_zscore, bars_held):
+        """
+        Check if position should be closed
+
+        Exit conditions (priority order):
+        1. Stop loss hit (Z-Score moved against position)
+        2. Z-Score reverted to mean (profit taking)
+        3. Max holding period exceeded (time-based exit)
+
+        Parameters:
+            current_zscore: Current Z-Score value
+            entry_zscore: Z-Score at position entry
+            bars_held: Number of bars since entry
+
+        Returns:
+            bool: True if should exit, False otherwise
+        """
+        # Check max holding period first (time-based exit)
+        if bars_held > self.max_hold_period:
+            return True
+
+        # Calculate stop loss threshold
+        stop_threshold = abs(entry_zscore) * self.stop_multiplier
+
+        # Check stop loss (price moved further against us)
+        if abs(current_zscore) > stop_threshold:
+            return True
+
+        # Check reversion to mean (profit taking)
+        if abs(current_zscore) < self.exit_threshold:
+            return True
+
+        return False
+
     def generate_signals(self, data):
         """
         Generate trading signals based on Z-Score mean reversion

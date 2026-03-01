@@ -52,3 +52,41 @@ def test_get_position_size_multi_layer():
     assert strategy.get_position_size(-1.5) == 0.5
     assert strategy.get_position_size(-2.0) == 0.75
     assert strategy.get_position_size(-2.5) == 1.0
+
+
+def test_should_exit_reversion():
+    """Test exit when Z-Score reverts to mean"""
+    config = {
+        'exit_threshold': 0.5,
+        'stop_multiplier': 1.5,
+        'max_hold_period': 50
+    }
+    strategy = MeanReversionStrategy('TEST', '2020-01-01', '2020-12-31', config)
+
+    # Entered at Z-Score = 2.0
+    # Should exit when Z-Score returns to ±0.5
+    assert strategy.should_exit(current_zscore=0.3, entry_zscore=2.0, bars_held=10) == True
+    assert strategy.should_exit(current_zscore=-0.3, entry_zscore=-2.0, bars_held=10) == True
+
+    # Should NOT exit when still far from mean
+    assert strategy.should_exit(current_zscore=1.5, entry_zscore=2.0, bars_held=10) == False
+
+
+def test_should_exit_stop_loss():
+    """Test exit when stop loss is hit"""
+    config = {'stop_multiplier': 1.5}
+    strategy = MeanReversionStrategy('TEST', '2020-01-01', '2020-12-31', config)
+
+    # Entered at Z-Score = 2.0, stop at 2.0 × 1.5 = 3.0
+    assert strategy.should_exit(current_zscore=3.1, entry_zscore=2.0, bars_held=10) == True
+    assert strategy.should_exit(current_zscore=2.9, entry_zscore=2.0, bars_held=10) == False
+
+
+def test_should_exit_max_holding_period():
+    """Test exit when max holding period exceeded"""
+    config = {'max_hold_period': 50}
+    strategy = MeanReversionStrategy('TEST', '2020-01-01', '2020-12-31', config)
+
+    # Should exit after 50 bars regardless of Z-Score
+    assert strategy.should_exit(current_zscore=1.0, entry_zscore=2.0, bars_held=51) == True
+    assert strategy.should_exit(current_zscore=1.0, entry_zscore=2.0, bars_held=50) == False
