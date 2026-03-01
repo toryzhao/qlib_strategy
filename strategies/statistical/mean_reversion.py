@@ -63,6 +63,33 @@ class MeanReversionStrategy(FuturesStrategy):
 
         return zscore
 
+    def get_position_size(self, zscore):
+        """
+        Calculate position size based on Z-Score deviation magnitude
+
+        Multi-layer position sizing:
+        - |z| < level1: 0% (no trade)
+        - level1 ≤ |z| < level2: 50%
+        - level2 ≤ |z| < level3: 75%
+        - |z| ≥ level3: 100%
+
+        Parameters:
+            zscore: Current Z-Score value (can be float or Series)
+
+        Returns:
+            float or Series: Position size ratio (0.0 to 1.0)
+        """
+        abs_z = abs(zscore)
+
+        if abs_z < self.level1_threshold:
+            return 0.0
+        elif abs_z < self.level2_threshold:
+            return 0.5
+        elif abs_z < self.level3_threshold:
+            return 0.75
+        else:
+            return 1.0
+
     def generate_signals(self, data):
         """
         Generate trading signals based on Z-Score mean reversion
