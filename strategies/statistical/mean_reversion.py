@@ -47,6 +47,28 @@ class MeanReversionStrategy(FuturesStrategy):
         else:
             self.risk_manager = None
 
+        # Initialize Trend Filter (方案1: 趋势过滤器)
+        self.use_trend_filter = config.get("use_trend_filter", True)
+        self.trend_filter_lookback = config.get("trend_filter_lookback", 60)
+        self.trend_slope_threshold = config.get("trend_slope_threshold", 0.005)
+        self.trend_r2_threshold = config.get("trend_r2_threshold", 0.3)
+
+        if self.use_trend_filter:
+            from strategies.statistical.trend_filter import TrendFilter
+            self.trend_filter = TrendFilter(
+                lookback=self.trend_filter_lookback,
+                slope_threshold=self.trend_slope_threshold,
+                r2_threshold=self.trend_r2_threshold
+            )
+        else:
+            self.trend_filter = None
+
+        # 动态仓位控制参数 (方案3)
+        self.enable_dynamic_position = config.get("enable_dynamic_position", True)
+        self.max_position_strong_trend = config.get("max_position_strong_trend", 0.1)
+        self.max_position_weak_trend = config.get("max_position_weak_trend", 0.3)
+        self.trend_strength_threshold = config.get("trend_strength_threshold", 0.01)
+
     def calculate_zscore(self, data):
         """
         Calculate Z-Score for price series
@@ -160,12 +182,14 @@ class MeanReversionStrategy(FuturesStrategy):
     def generate_signals(self, data):
         """
         Generate trading signals based on Z-Score mean reversion
+        with trend filter and dynamic position control
 
         Strategy logic:
+        - Check if market is suitable for mean reversion (trend filter)
         - Calculate Z-Score for price series
         - Short when price above mean (positive Z-Score)
         - Long when price below mean (negative Z-Score)
-        - Position size based on deviation magnitude
+        - Position size based on deviation magnitude and trend strength
 
         Parameters:
             data: DataFrame with 'close' column
@@ -173,11 +197,31 @@ class MeanReversionStrategy(FuturesStrategy):
         Returns:
             pd.Series: Signal series (1=long, -1=short, 0=no position)
         """
+        # 方案1: 趋势过滤器 - 在强趋势市场中不交易
+        if self.trend_filter is not None:
+            if not self.trend_filter.should_trade_mean_reversion(data):
+                # 市场在强趋势中，返回空仓
+                return pd.Series(0, index=data.index)
+
         # Calculate Z-Score
         zscore = self.calculate_zscore(data)
 
         # Initialize signals Series
         signals = pd.Series(0, index=data.index)
+
+        # Get trend strength for dynamic position sizing (方案3)
+        trend_strength = 0
+        if self.enable_dynamic_position and self.trend_filter is not None:
+            trend_strength = self.trend_filter.get_trend_strength(data)
+
+        # Calculate max position based on trend strength
+        if self.enable_dynamic_position:
+            if trend_strength > self.trend_strength_threshold:
+                max_position = self.max_position_strong_trend  # 强趋势：小仓位
+            else:
+                max_position = self.max_position_weak_trend   # 弱趋势：正常仓位
+        else:
+            max_position = 1.0  # 不限制
 
         # Generate signals for valid Z-Scores
         valid_mask = ~pd.isna(zscore)
@@ -191,13 +235,17 @@ class MeanReversionStrategy(FuturesStrategy):
             # Determine signal direction and position size
             if current_z > 0:
                 # Price above mean → potential short
-                position_size = self.get_position_size(current_z)
-                if position_size > 0:
+                base_position_size = self.get_position_size(current_z)
+                if base_position_size > 0:
+                    # 应用动态仓位限制
+                    actual_position = min(base_position_size, max_position)
                     signals.iloc[i] = -1
             else:
                 # Price below mean → potential long
-                position_size = self.get_position_size(current_z)
-                if position_size > 0:
+                base_position_size = self.get_position_size(current_z)
+                if base_position_size > 0:
+                    # 应用动态仓位限制
+                    actual_position = min(base_position_size, max_position)
                     signals.iloc[i] = 1
 
         return signals
