@@ -7,6 +7,4 @@ This module provides statistical models for detecting market regimes
 
 __version__ = "0.1.0"
 
-from .market_regime_detector import MarketRegimeDetector
-
-__all__ = ['MarketRegimeDetector']
+# Task 2 will implement the HMM-based RegimeDetector
