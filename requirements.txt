@@ -22,3 +22,6 @@ tqdm>=4.65.0
 # Development
 pytest>=7.4.0
 pytest-cov>=4.1.0
+
+# Market Regime Detection
+hmmlearn>=0.3.3
