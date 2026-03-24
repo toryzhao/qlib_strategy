@@ -169,7 +169,7 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
     trades = []
 
     # Improved parameters
-    min_holding_days = 1  # Allow faster exits
+    min_holding_days = 5
     atr_multiplier = 1.5  # More relaxed entry
 
     # Merge assignments with data
