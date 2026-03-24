@@ -192,13 +192,6 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
         except KeyError:
             current_atr = atr.iloc[-1]
 
-        # Calculate ATR percentile (relative to past 60 days)
-        atr_percentile = (atr.iloc[:i+1] <= current_atr).sum() / len(atr.iloc[:i+1])
-
-        # Skip trading if volatility is too high (>80th percentile) or too low (<20th percentile)
-        if atr_percentile > 0.8 or atr_percentile < 0.2:
-            continue
-
         current_regime = current_data['Trading_State_Smooth'].iloc[-1]
 
         # Check stop loss first
