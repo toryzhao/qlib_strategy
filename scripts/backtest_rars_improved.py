@@ -145,7 +145,7 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
 
     # Generate trend-based regimes (ignores HMM assignments)
     print("\n生成基于趋势的机制标签...")
-    assignments = generate_trend_based_regimes(data, ma_period=100)  # Faster response
+    assignments = generate_trend_based_regimes(data, ma_period=200)
 
     # Calculate ATR
     atr = calculate_atr(data)
