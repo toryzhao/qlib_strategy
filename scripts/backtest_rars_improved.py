@@ -274,42 +274,28 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
         # Generate signals based on regime
         signal = None
 
-        if current_regime == 'BULL':
-            # Buy on pullback to recent low
-            window = calculate_dynamic_window(current_data['close'], len(current_data) - 1,
-                                             window_short=15, window_long=40)
-            recent_low = current_data['low'].rolling(window).min().iloc[-1]
-            entry_zone = recent_low + (atr_multiplier * current_atr)
+        # Use 120-day window for multi-period breakouts
+        breakout_window = 120
 
-            if position == 0 and current_price <= entry_zone:
+        if current_regime == 'BULL':
+            # Buy on breakout above 120-day high (trend following)
+            recent_high = current_data['high'].rolling(breakout_window).max().iloc[-1]
+            breakout_level = recent_high + (0.5 * atr_multiplier * current_atr)
+
+            if position == 0 and current_price > breakout_level:
                 signal = 'LONG'
 
         elif current_regime == 'BEAR':
-            # Short on rally to recent high
-            window = calculate_dynamic_window(current_data['close'], len(current_data) - 1,
-                                             window_short=15, window_long=40)
-            recent_high = current_data['high'].rolling(window).max().iloc[-1]
-            entry_zone = recent_high - (atr_multiplier * current_atr)
+            # Short on breakdown below 120-day low (trend following)
+            recent_low = current_data['low'].rolling(breakout_window).min().iloc[-1]
+            breakdown_level = recent_low - (0.5 * atr_multiplier * current_atr)
 
-            if position == 0 and current_price >= entry_zone:
+            if position == 0 and current_price < breakdown_level:
                 signal = 'SHORT'
 
         elif current_regime == 'RANGING':
-            # Trade breakouts WITHOUT confirmation (improved)
-            window = calculate_dynamic_window(current_data['close'], len(current_data) - 1,
-                                             window_short=15, window_long=40)
-            recent_high = current_data['high'].rolling(window).max().iloc[-1]
-            recent_low = current_data['low'].rolling(window).min().iloc[-1]
-
-            breakout_level = recent_high + (atr_multiplier * current_atr)
-            breakdown_level = recent_low - (atr_multiplier * current_atr)
-
-            # Enter immediately on breakout (no confirmation)
-            if position == 0:
-                if current_price > breakout_level:
-                    signal = 'LONG'
-                elif current_price < breakdown_level:
-                    signal = 'SHORT'
+            # Don't trade in ranging markets with this approach
+            pass
 
         # Execute signal
         if signal == 'LONG' and position == 0:
