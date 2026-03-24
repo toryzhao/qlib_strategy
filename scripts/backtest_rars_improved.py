@@ -236,40 +236,8 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
                         position_side = None
                         continue
 
-        # Check if minimum holding period passed and regime changed
-        if position != 0 and position_entry_date is not None:
-            days_held = (current_date - position_entry_date).days
-            if days_held >= min_holding_days:
-                # Get regime when entered
-                entry_regime = trades[-1]['regime_smooth']
-
-                # If regime changed, exit
-                if current_regime != entry_regime:
-                    # Close position
-                    if position > 0:
-                        cash += position * current_price
-                        if trades:
-                            pnl = (current_price - position_entry_price) / position_entry_price
-                            trades[-1]['exit_date'] = current_date
-                            trades[-1]['exit_price'] = current_price
-                            trades[-1]['pnl'] = pnl
-                            trades[-1]['exit_reason'] = 'REGIME_CHANGE'
-                            trades[-1]['days_held'] = days_held
-                    else:
-                        cash -= abs(position) * current_price
-                        if trades:
-                            pnl = (position_entry_price - current_price) / position_entry_price
-                            trades[-1]['exit_date'] = current_date
-                            trades[-1]['exit_price'] = current_price
-                            trades[-1]['pnl'] = pnl
-                            trades[-1]['exit_reason'] = 'REGIME_CHANGE'
-                            trades[-1]['days_held'] = days_held
-
-                    position = 0
-                    position_entry_price = None
-                    position_entry_date = None
-                    position_side = None
-                    continue
+        # NOTE: Removed regime change exit logic
+        # Now only exit on stop loss - let winners run
 
         # Generate signals based on regime
         signal = None
