@@ -170,7 +170,7 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
 
     # Improved parameters
     min_holding_days = 5
-    atr_multiplier = 1.5  # More relaxed entry
+    atr_multiplier = 1.0  # Tighter entry for more signals
 
     # Merge assignments with data
     assignments['Date'] = pd.to_datetime(assignments['Date'])
