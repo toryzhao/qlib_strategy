@@ -201,8 +201,19 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
 
             # Only check stop loss if minimum holding period passed
             if days_held >= min_holding_days:
+                # Dynamic stop loss based on volatility
+                atr_percentile = (atr.iloc[:i+1] <= current_atr).sum() / len(atr.iloc[:i+1])
+
+                # Wider stops in high volatility, tighter in low volatility
+                if atr_percentile > 0.7:
+                    stop_multiplier = 3.0  # Very wide
+                elif atr_percentile > 0.4:
+                    stop_multiplier = 2.0  # Normal
+                else:
+                    stop_multiplier = 1.5  # Tight
+
                 if position > 0:  # Long
-                    stop_loss = position_entry_price - (2 * current_atr)
+                    stop_loss = position_entry_price - (stop_multiplier * current_atr)
                     if current_price < stop_loss:
                         # Close position
                         cash += position * current_price
@@ -220,7 +231,7 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
                         continue
 
                 elif position < 0:  # Short
-                    stop_loss = position_entry_price + (2 * current_atr)
+                    stop_loss = position_entry_price + (stop_multiplier * current_atr)
                     if current_price > stop_loss:
                         cash -= abs(position) * current_price
                         if trades:
