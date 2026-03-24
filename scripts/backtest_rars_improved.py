@@ -17,37 +17,81 @@ import numpy as np
 from utils.data_processor import ContinuousContractProcessor
 
 
-def smooth_regimes(assignments, smooth_days=5):
+def generate_trend_based_regimes(data, ma_period=200):
+    """
+    Generate regime labels based on price trend relative to long-term MA
+
+    This replaces HMM with a simpler, more reliable trend indicator:
+    - BULL: Price > MA200 and MA is rising
+    - BEAR: Price < MA200 and MA is falling
+    - RANGING: Price near MA200 (within 2%)
+
+    Args:
+        data: DataFrame with 'close' column
+        ma_period: Period for moving average (default 200)
+
+    Returns:
+        DataFrame with ['Date', 'Trading_State', 'Trading_State_Smooth']
+    """
+    # Calculate MA200 and its slope
+    ma = data['close'].rolling(window=ma_period).mean()
+    ma_slope = ma.diff(5)  # 5-day slope
+
+    # Calculate threshold as % of price
+    threshold = data['close'] * 0.02  # 2% band
+
+    # Classify regimes
+    regimes = []
+    for i in range(len(data)):
+        if pd.isna(ma.iloc[i]) or pd.isna(ma_slope.iloc[i]):
+            regimes.append('RANGING')
+        elif data['close'].iloc[i] > (ma.iloc[i] + threshold.iloc[i]):
+            # Price significantly above MA
+            if ma_slope.iloc[i] > 0:
+                regimes.append('BULL')
+            else:
+                regimes.append('RANGING')
+        elif data['close'].iloc[i] < (ma.iloc[i] - threshold.iloc[i]):
+            # Price significantly below MA
+            if ma_slope.iloc[i] < 0:
+                regimes.append('BEAR')
+            else:
+                regimes.append('RANGING')
+        else:
+            # Price within 2% of MA
+            regimes.append('RANGING')
+
+    # Create DataFrame
+    assignments = pd.DataFrame({
+        'Date': data.index,
+        'Trading_State': regimes
+    })
+
+    # Apply smoothing
+    assignments['Trading_State_Smooth'] = smooth_regimes_logic(assignments['Trading_State'], smooth_days=5)
+
+    return assignments
+
+
+def smooth_regimes_logic(series, smooth_days=5):
     """
     Smooth regime labels to reduce noise
 
     Require 'smooth_days' consecutive days in same regime to confirm
-
-    Args:
-        assignments: DataFrame with ['Date', 'Trading_State']
-        smooth_days: Days required to confirm regime
-
-    Returns:
-        DataFrame with smoothed 'Trading_State_Smooth' column
     """
-    assignments = assignments.copy()
-    assignments['Trading_State_Smooth'] = assignments['Trading_State'].copy()
+    smoothed = series.copy()
 
-    # For each day, check if we've been in same regime for smooth_days
-    for i in range(smooth_days, len(assignments)):
-        recent_states = assignments.iloc[i-smooth_days:i]['Trading_State']
+    for i in range(smooth_days, len(series)):
+        recent_states = series.iloc[i-smooth_days:i]
 
         # If all recent days are same regime, use it
         if (recent_states == recent_states.iloc[0]).all():
-            assignments.iloc[i, assignments.columns.get_loc('Trading_State_Smooth')] = recent_states.iloc[0]
+            smoothed.iloc[i] = recent_states.iloc[0]
         else:
             # Keep previous smoothed state
-            assignments.iloc[i, assignments.columns.get_loc('Trading_State_Smooth')] = assignments.iloc[i-1]['Trading_State_Smooth']
+            smoothed.iloc[i] = smoothed.iloc[i-1]
 
-    # Fill first smooth_days with original
-    assignments.iloc[:smooth_days, assignments.columns.get_loc('Trading_State_Smooth')] = assignments.iloc[:smooth_days]['Trading_State'].values
-
-    return assignments
+    return smoothed
 
 
 def calculate_atr(data, period=14):
@@ -78,28 +122,30 @@ def calculate_dynamic_window(atr_series, current_idx, window_short=10, window_lo
         return window_long
 
 
-def run_improved_backtest(data, assignments, initial_cash=1000000):
+def run_improved_backtest(data, assignments=None, initial_cash=1000000):
     """
     Run improved RARS backtest
 
     Key improvements:
-    1. Use smoothed regimes (5-day confirmation)
-    2. Remove confirmation for ranging market breakouts
-    3. Use 1.5 ATR buffer instead of 1.0
-    4. Minimum 5-day holding period
-    5. Dynamic windows: 15/40 instead of 10/30
+    1. Use trend-based regimes (MA200) instead of HMM
+    2. Regime smoothing with 5-day confirmation
+    3. Remove confirmation for ranging market breakouts
+    4. Use 1.5 ATR buffer instead of 1.0
+    5. Minimum 5-day holding period
+    6. Dynamic windows: 15/40 instead of 10/30
     """
     print("\n执行改进版 RARS 策略回测...")
     print("改进:")
+    print("  - 基于趋势的机制检测 (MA200) 替代 HMM")
     print("  - 机制平滑: 连续5天才确认新机制")
     print("  - 移除震荡市突破确认")
     print("  - ATR倍数: 1.5 (更宽的入场区)")
     print("  - 最短持仓: 5天")
     print("  - 动态窗口: 15/40天")
 
-    # Smooth regimes
-    print("\n平滑机制标签...")
-    assignments = smooth_regimes(assignments, smooth_days=5)
+    # Generate trend-based regimes (ignores HMM assignments)
+    print("\n生成基于趋势的机制标签...")
+    assignments = generate_trend_based_regimes(data, ma_period=200)
 
     # Calculate ATR
     atr = calculate_atr(data)
@@ -469,13 +515,8 @@ def main():
     print(f"数据加载完成: {len(df_test)} 个交易日")
     print(f"回测周期: {test_start} 到 {test_end}")
 
-    # Load regime labels
-    print("\n加载 HMM 机制标签...")
-    assignments = pd.read_csv('data/regimetry/reports/HMM_TA/cluster_assignments.csv')
-    print(f"机制标签加载完成: {len(assignments)} 个数据点")
-
-    # Run improved backtest
-    metrics = run_improved_backtest(df_test, assignments)
+    # Run improved backtest (generates trend-based regimes internally)
+    metrics = run_improved_backtest(df_test)
 
     # Print results
     print_results(metrics, "改进版 RARS 策略回测结果")
