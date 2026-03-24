@@ -274,12 +274,20 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
         # Generate signals based on regime
         signal = None
 
+        # Use regime-specific ATR multipliers
+        if current_regime == 'BULL':
+            regime_atr_multiplier = atr_multiplier * 1.5  # More conservative in BULL
+        elif current_regime == 'BEAR':
+            regime_atr_multiplier = atr_multiplier * 0.8  # More aggressive in BEAR
+        else:
+            regime_atr_multiplier = atr_multiplier  # Default for RANGING
+
         if current_regime == 'BULL':
             # Buy on pullback to recent low
             window = calculate_dynamic_window(current_data['close'], len(current_data) - 1,
                                              window_short=15, window_long=40)
             recent_low = current_data['low'].rolling(window).min().iloc[-1]
-            entry_zone = recent_low + (atr_multiplier * current_atr)
+            entry_zone = recent_low + (regime_atr_multiplier * current_atr)
 
             if position == 0 and current_price <= entry_zone:
                 signal = 'LONG'
@@ -289,7 +297,7 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
             window = calculate_dynamic_window(current_data['close'], len(current_data) - 1,
                                              window_short=15, window_long=40)
             recent_high = current_data['high'].rolling(window).max().iloc[-1]
-            entry_zone = recent_high - (atr_multiplier * current_atr)
+            entry_zone = recent_high - (regime_atr_multiplier * current_atr)
 
             if position == 0 and current_price >= entry_zone:
                 signal = 'SHORT'
@@ -301,8 +309,8 @@ def run_improved_backtest(data, assignments=None, initial_cash=1000000):
             recent_high = current_data['high'].rolling(window).max().iloc[-1]
             recent_low = current_data['low'].rolling(window).min().iloc[-1]
 
-            breakout_level = recent_high + (atr_multiplier * current_atr)
-            breakdown_level = recent_low - (atr_multiplier * current_atr)
+            breakout_level = recent_high + (regime_atr_multiplier * current_atr)
+            breakdown_level = recent_low - (regime_atr_multiplier * current_atr)
 
             # Enter immediately on breakout (no confirmation)
             if position == 0:
