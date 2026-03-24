@@ -1,0 +1,14 @@
+iteration	timestamp	change_type	change_description	annual_return_before	annual_return_after	guard_passed	result	outcome
+0	2025-03-24T00:00:00	BASELINE	Initial state (HMM)		-0.0000		true		-
+1	2025-03-24T00:01:00	REGIME_DETECTION	Replace HMM with MA200 trend-based regimes	-0.0000	0.0200	true	+0.0200	KEEP
+2	2025-03-24T00:02:00	PARAMETER_TUNING	Reduce ATR multiplier from 1.5 to 1.0	0.0200	-0.0000	true	-0.0200	DISCARD
+3	2025-03-24T00:03:00	PARAMETER_TUNING	Reduce min_holding_days from 5 to 1	0.0200	0.0200	true	0.0000	DISCARD
+4	2025-03-24T00:04:00	PARAMETER_TUNING	Reduce MA period from 200 to 100	0.0200	-0.0000	true	-0.0200	DISCARD
+5	2025-03-24T00:05:00	PARAMETER_TUNING	Increase ATR multiplier from 1.5 to 2.0	0.0200	0.0200	true	0.0000	DISCARD
+6	2025-03-24T00:06:00	REGIME_CLASSIFICATION	Widen regime classification (1% threshold, no slope req)	0.0200	0.0200	true	0.0000	DISCARD
+7	2025-03-24T00:07:00	REGIME_DETECTION	Momentum-based regimes (ROC >2% BULL, <-2% BEAR)	0.0200	-0.0300	true	-0.0500	DISCARD
+8	2025-03-24T00:08:00	POSITION_SIZING	Regime-specific ATR multipliers (BULL 1.5x, BEAR 0.8x)	0.0200	0.0200	true	0.0000	DISCARD
+9	2025-03-24T00:09:00	FILTER	Volatility filtering (only trade 20-80th percentile ATR)	0.0200	-0.0400	true	-0.0600	DISCARD
+10	2025-03-24T00:10:00	STOP_LOSS	Dynamic volatility-adaptive stop loss	0.0200	0.0200	true	0.0000	DISCARD
+11	2025-03-24T00:11:00	STRATEGY	Breakout strategy (120-day highs/lows)	0.0200	0.0000	true	-0.0200	DISCARD
+12	2025-03-24T00:12:00	EXIT_LOGIC	Remove regime change exits (only stop loss)	0.0200	-0.0100	true	-0.0300	DISCARD
