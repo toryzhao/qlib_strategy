@@ -19,46 +19,36 @@ from utils.data_processor import ContinuousContractProcessor
 
 def generate_trend_based_regimes(data, ma_period=200):
     """
-    Generate regime labels based on price trend relative to long-term MA
+    Generate regime labels based on momentum (Rate of Change)
 
-    This replaces HMM with a simpler, more reliable trend indicator:
-    - BULL: Price > MA200 and MA is rising
-    - BEAR: Price < MA200 and MA is falling
-    - RANGING: Price near MA200 (within 2%)
+    Uses momentum oscillator instead of MA for faster regime detection:
+    - BULL: ROC(50) > 2% (strong upward momentum)
+    - BEAR: ROC(50) < -2% (strong downward momentum)
+    - RANGING: Between -2% and +2% (sideways/weak momentum)
 
     Args:
         data: DataFrame with 'close' column
-        ma_period: Period for moving average (default 200)
+        ma_period: Not used (kept for compatibility)
 
     Returns:
         DataFrame with ['Date', 'Trading_State', 'Trading_State_Smooth']
     """
-    # Calculate MA200 and its slope
-    ma = data['close'].rolling(window=ma_period).mean()
-    ma_slope = ma.diff(5)  # 5-day slope
+    # Calculate 50-day Rate of Change
+    roc = data['close'].pct_change(50) * 100  # Percentage change
 
-    # Calculate threshold as % of price
-    threshold = data['close'] * 0.02  # 2% band
-
-    # Classify regimes
+    # Classify regimes based on momentum
     regimes = []
     for i in range(len(data)):
-        if pd.isna(ma.iloc[i]) or pd.isna(ma_slope.iloc[i]):
+        if pd.isna(roc.iloc[i]):
             regimes.append('RANGING')
-        elif data['close'].iloc[i] > (ma.iloc[i] + threshold.iloc[i]):
-            # Price significantly above MA
-            if ma_slope.iloc[i] > 0:
-                regimes.append('BULL')
-            else:
-                regimes.append('RANGING')
-        elif data['close'].iloc[i] < (ma.iloc[i] - threshold.iloc[i]):
-            # Price significantly below MA
-            if ma_slope.iloc[i] < 0:
-                regimes.append('BEAR')
-            else:
-                regimes.append('RANGING')
+        elif roc.iloc[i] > 2.0:
+            # Strong upward momentum
+            regimes.append('BULL')
+        elif roc.iloc[i] < -2.0:
+            # Strong downward momentum
+            regimes.append('BEAR')
         else:
-            # Price within 2% of MA
+            # Weak momentum / sideways
             regimes.append('RANGING')
 
     # Create DataFrame
