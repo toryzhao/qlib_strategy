@@ -38,7 +38,7 @@ def generate_trend_based_regimes(data, ma_period=200):
     ma_slope = ma.diff(5)  # 5-day slope
 
     # Calculate threshold as % of price
-    threshold = data['close'] * 0.01  # 1% band (tighter for more BEAR signals)
+    threshold = data['close'] * 0.02  # 2% band
 
     # Classify regimes
     regimes = []
@@ -53,9 +53,12 @@ def generate_trend_based_regimes(data, ma_period=200):
                 regimes.append('RANGING')
         elif data['close'].iloc[i] < (ma.iloc[i] - threshold.iloc[i]):
             # Price significantly below MA
-            regimes.append('BEAR')  # More aggressive BEAR classification
+            if ma_slope.iloc[i] < 0:
+                regimes.append('BEAR')
+            else:
+                regimes.append('RANGING')
         else:
-            # Price within 1% of MA
+            # Price within 2% of MA
             regimes.append('RANGING')
 
     # Create DataFrame
